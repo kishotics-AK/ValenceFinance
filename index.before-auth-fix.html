@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valence Finance — Minimalist Personal Finance & Expense Management</title>
+  <meta name="description" content="High-productivity, minimalist personal finance and expense management system with intelligent 50/30/20 budget analysis and actionable savings tips.">
+  
+  <!-- Modern Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+
+  <style>
+  [hidden] {
+    display: none !important;
+  }
+
+  .auth-screen {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    color: var(--text-primary, #f4f6fb);
+    background: var(--bg-primary, #0b1020);
+  }
+
+  .auth-card {
+    width: min(100%, 420px);
+    display: grid;
+    gap: 16px;
+    padding: 32px;
+    border: 1px solid var(--border-color, #2d3548);
+    border-radius: 16px;
+    background: var(--bg-secondary, #131a2a);
+  }
+
+  .auth-card h1,
+  .auth-card p {
+    margin: 0;
+  }
+
+  .auth-card label {
+    display: grid;
+    gap: 8px;
+  }
+
+  .auth-card input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    color: inherit;
+    background: var(--bg-primary, #0b1020);
+    border: 1px solid var(--border-color, #2d3548);
+    border-radius: 8px;
+  }
+
+  .auth-message {
+    min-height: 1.4em;
+    color: var(--accent-rose, #ff758f);
+  }
+</style>
+<style>
+  #finance-auth {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    color: #f4f6fb;
+    background: #0b1020;
+  }
+
+  #finance-auth[hidden] {
+    display: none !important;
+  }
+
+  #finance-auth .auth-card {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 420px);
+    display: grid;
+    gap: 16px;
+    padding: 32px;
+    color: #f4f6fb;
+    background: #172033;
+    border: 1px solid #3a4660;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px #0009;
+  }
+
+  #finance-auth input {
+    color: #f4f6fb;
+    background: #0b1020;
+    border: 1px solid #3a4660;
+  }
+</style>
+</head>
+<body>
+  <div class="app-container" id="finance-app" hidden>
+
+	  <section class="auth-screen" id="finance-auth">
+    <form class="auth-card" id="auth-form">
+      <div>
+        <p>VALENCE FINANCE</p>
+        <h1 id="auth-title">Sign in</h1>
+        <p id="auth-description">Sign in to access your finance dashboard.</p>
+      </div>
+
+      <label>
+        Email
+        <input id="auth-email" type="email" autocomplete="email" required>
+      </label>
+
+      <label>
+        Password
+        <input
+          id="auth-password"
+          type="password"
+          autocomplete="current-password"
+          minlength="15"
+          maxlength="128"
+          required
+        >
+      </label>
+
+      <button class="btn btn-primary" id="auth-submit" type="submit">Sign in</button>
+      <p class="auth-message" id="auth-message" role="status"></p>
+      <button id="auth-toggle" type="button">Need an account? Create one</button>
+    </form>
+  </section>
+
+    <!-- Top Header Navigation -->
+    <header class="app-header">
+      <div class="brand" onclick="window.valenceApp.switchView('overview')">
+        <div class="brand-icon">V</div>
+        <div class="brand-text">
+          <span>VALENCE</span>
+          <span class="brand-badge">PRO</span>
+        </div>
+      </div>
+
+      <!-- Segmented View Tabs -->
+      <nav class="nav-tabs" aria-label="Main Navigation">
+        <button class="nav-tab active" data-view="overview" id="nav-tab-overview" title="Dashboard (1)">
+          <span>Overview</span>
+          <kbd>1</kbd>
+        </button>
+        <button class="nav-tab" data-view="transactions" id="nav-tab-transactions" title="Transactions Ledger (2)">
+          <span>Ledger</span>
+          <kbd>2</kbd>
+        </button>
+        <button class="nav-tab" data-view="budgets" id="nav-tab-budgets" title="Budgets & Goals (3)">
+          <span>Budgets & Goals</span>
+          <kbd>3</kbd>
+        </button>
+        <button class="nav-tab" data-view="advisor" id="nav-tab-advisor" title="Smart Advisory (4)">
+          <span>Tips & Simulator</span>
+          <kbd>4</kbd>
+        </button>
+      </nav>
+
+      <!-- Header Action Controls -->
+      <div class="header-actions">
+        <!-- Currency Selector -->
+        <select class="select-filter" id="currency-select" title="Change Currency">
+          <option value="$">USD ($)</option>
+          <option value="€">EUR (€)</option>
+          <option value="£">GBP (£)</option>
+          <option value="₹">INR (₹)</option>
+          <option value="¥">JPY (¥)</option>
+          <option value="CA$">CAD ($)</option>
+          <option value="A$">AUD ($)</option>
+        </select>
+
+        <!-- Keyboard Shortcuts Trigger -->
+        <button class="btn-icon" id="shortcuts-btn" title="Keyboard Shortcuts (?)">
+          <span style="font-weight: 700; font-size: 0.95rem;">?</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="btn-icon" id="theme-toggle-btn" title="Toggle Theme (D)">
+          ☀️
+        </button>
+
+        <!-- Quick Add Transaction Primary Button -->
+        <button class="btn btn-primary" id="quick-add-btn" title="Add Transaction (N)">
+          <span>+ Record</span>
+          <kbd style="font-size: 0.7rem; opacity: 0.8; font-family: var(--font-mono);">N</kbd>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- VIEW 1: OVERVIEW DASHBOARD -->
+      <section class="view-panel active" id="view-overview">
+        <!-- Quick Natural Language Entry Bar -->
+        <div class="quick-entry-bar">
+          <span style="font-size: 1.15rem; color: var(--accent-primary);">⚡</span>
+          <input 
+            type="text" 
+            class="quick-entry-input" 
+            id="quick-bar-input" 
+            placeholder='Frictionless Entry: type "Coffee 4.50" or "Salary 4000" and press Enter...' 
+            autocomplete="off"
+          />
+          <button class="btn btn-secondary btn-sm" onclick="window.valenceApp.openTransactionModal()">
+            Full Form
+          </button>
+        </div>
+
+        <!-- 4 Key Financial Metric Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Total Income</span>
+              <span style="color: var(--accent-emerald);">↗</span>
+            </div>
+            <div class="metric-value" id="metric-income">$0</div>
+            <div class="metric-delta delta-positive">This Period</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Total Expenses</span>
+              <span style="color: var(--accent-rose);">↘</span>
+            </div>
+            <div class="metric-value" id="metric-expense">$0</div>
+            <div class="metric-delta delta-neutral">Current Month</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Net Savings</span>
+              <span style="color: var(--accent-primary);">⚡</span>
+            </div>
+            <div class="metric-value" id="metric-net">$0</div>
+            <div class="metric-delta delta-positive" id="metric-net-delta">0% rate</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Health Score</span>
+              <span>🛡️</span>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 8px;">
+              <span class="metric-value" id="metric-health-score">--</span>
+              <span style="font-size: 0.9rem; color: var(--text-tertiary);">/100</span>
+            </div>
+            <div class="metric-delta delta-positive" id="metric-health-badge">Solid</div>
+          </div>
+        </div>
+
+        <!-- 50/30/20 Visual Benchmark Rule Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h2 class="card-title">50/30/20 Budget Rule Allocation</h2>
+              <span class="card-subtitle">Recommended standard: 50% Needs, 30% Wants, 20% Savings & Debt</span>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="window.valenceApp.switchView('advisor')">
+              Optimization Advice →
+            </button>
+          </div>
+
+          <div class="gauge-container">
+            <div class="gauge-bar">
+              <div class="gauge-segment needs" id="gauge-needs-bar" style="width: 50%;"></div>
+              <div class="gauge-segment wants" id="gauge-wants-bar" style="width: 30%;"></div>
+              <div class="gauge-segment savings" id="gauge-savings-bar" style="width: 20%;"></div>
+            </div>
+
+            <div class="gauge-legend">
+              <div class="legend-item">
+                <div class="legend-header">
+                  <span class="legend-tag">
+                    <span class="legend-dot needs"></span> Needs
+                  </span>
+                  <span id="legend-needs-pct">50%</span>
+                </div>
+                <div class="legend-value" id="legend-needs-val">$0</div>
+                <div class="legend-sub">
+                  <span>Housing, Groceries, Utilities</span>
+                  <span>Target: ≤50%</span>
+                </div>
+              </div>
+
+              <div class="legend-item">
+                <div class="legend-header">
+                  <span class="legend-tag">
+                    <span class="legend-dot wants"></span> Wants
+                  </span>
+                  <span id="legend-wants-pct">30%</span>
+                </div>
+                <div class="legend-value" id="legend-wants-val">$0</div>
+                <div class="legend-sub">
+                  <span>Dining, Fun, Shopping</span>
+                  <span>Target: ≤30%</span>
+                </div>
+              </div>
+
+              <div class="legend-item">
+                <div class="legend-header">
+                  <span class="legend-tag">
+                    <span class="legend-dot savings"></span> Savings & Debt
+                  </span>
+                  <span id="legend-savings-pct">20%</span>
+                </div>
+                <div class="legend-value" id="legend-savings-val">$0</div>
+                <div class="legend-sub">
+                  <span>Investments, Emergency, Loans</span>
+                  <span>Target: ≥20%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Column Analytics & Charts -->
+        <div class="grid-2col">
+          <!-- Cashflow Chart -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Cashflow Flow</h3>
+                <span class="card-subtitle">Inflow vs Outflow comparison</span>
+              </div>
+            </div>
+            <div id="cashflow-chart-container"></div>
+          </div>
+
+          <!-- Category Spending Donut -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Category Breakdown</h3>
+                <span class="card-subtitle">Discretionary & fixed spend share</span>
+              </div>
+            </div>
+            <div id="donut-chart-container"></div>
+          </div>
+        </div>
+
+        <!-- Smart Advisory Snapshot -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3 class="card-title">Priority Financial Insights & Tips</h3>
+              <span class="card-subtitle">Real-time algorithmic tips based on your spending patterns</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="window.valenceApp.switchView('advisor')">
+              View All Tips & Simulator
+            </button>
+          </div>
+          <div class="tips-list" id="overview-tips-container">
+            <!-- Dynamic tips injected here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: TRANSACTIONS LEDGER -->
+      <section class="view-panel" id="view-transactions">
+        <!-- Ledger Controls & Filters -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input 
+                type="text" 
+                class="search-input" 
+                id="tx-search-input" 
+                placeholder="Search transactions (press /)" 
+              />
+            </div>
+
+            <div class="pill-group">
+              <button class="pill-btn pill-filter active" data-filter="all">All</button>
+              <button class="pill-btn pill-filter" data-filter="expense">Expenses</button>
+              <button class="pill-btn pill-filter" data-filter="income">Income</button>
+            </div>
+
+            <select class="select-filter" id="tx-category-filter">
+              <option value="all">All Categories</option>
+              <option value="Housing">Housing</option>
+              <option value="Groceries">Groceries</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Dining & Drinks">Dining & Drinks</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Subscriptions">Subscriptions</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Emergency Fund">Emergency Fund</option>
+              <option value="Investments">Investments</option>
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <span id="tx-count-display" style="font-size: 0.8rem; color: var(--text-tertiary);">0 records</span>
+            <button class="btn btn-secondary btn-sm" id="export-csv-btn" title="Download CSV">
+              ⬇ Export CSV
+            </button>
+            <button class="btn btn-ghost btn-sm" id="reset-demo-btn" title="Load sample dataset">
+              Demo Data
+            </button>
+            <button class="btn btn-ghost btn-sm" id="clear-data-btn" title="Clear all data" style="color: var(--accent-rose);">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Ledger Table -->
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Description / Notes</th>
+                <th>50/30/20 Tier</th>
+                <th style="text-align: right;">Amount</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="transactions-table-body">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- VIEW 3: BUDGETS & SAVINGS GOALS -->
+      <section class="view-panel" id="view-budgets">
+        <div class="grid-2col">
+          <!-- Category Monthly Budgets -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Category Monthly Budgets</h3>
+                <span class="card-subtitle">Track spending limits and prevent overruns</span>
+              </div>
+            </div>
+            <div class="budget-list" id="budget-bars-list">
+              <!-- Dynamic budget meters -->
+            </div>
+          </div>
+
+          <!-- Savings Goals Section -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Savings Goals & Milestones</h3>
+                <span class="card-subtitle">Fund your future safety net and targets</span>
+              </div>
+              <button class="btn btn-primary btn-sm" id="add-goal-btn">
+                + New Goal
+              </button>
+            </div>
+            <div class="goals-grid" id="savings-goals-grid">
+              <!-- Dynamic Goal Cards -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: SMART ADVISORY & WHAT-IF SIMULATOR -->
+      <section class="view-panel" id="view-advisor">
+        <!-- Health Audit Section -->
+        <div id="health-audit-container"></div>
+
+        <div class="grid-2col">
+          <!-- What-If Simulator Widget -->
+          <div class="whatif-widget">
+            <div class="card-title-group">
+              <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <span>⚡</span> Interactive "What-If" Savings Simulator
+              </h3>
+              <span class="card-subtitle">See how trimming discretionary 'Wants' supercharges your net worth</span>
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label-row">
+                <span>Reduce 'Wants' Spending By:</span>
+                <span class="slider-val" id="slider-val-display">20%</span>
+              </div>
+              <input 
+                type="range" 
+                class="custom-slider" 
+                id="whatif-slider" 
+                min="5" 
+                max="50" 
+                step="5" 
+                value="20" 
+              />
+            </div>
+
+            <div class="whatif-results">
+              <div class="result-stat-box">
+                <span class="result-stat-label">Extra Monthly Savings</span>
+                <span class="result-stat-value" id="sim-extra-monthly">+$0</span>
+              </div>
+
+              <div class="result-stat-box">
+                <span class="result-stat-label">Extra Annual Savings</span>
+                <span class="result-stat-value" id="sim-extra-annual">+$0</span>
+              </div>
+
+              <div class="result-stat-box">
+                <span class="result-stat-label">Projected Savings Rate</span>
+                <span class="result-stat-value" id="sim-new-rate" style="color: var(--accent-primary);">0%</span>
+              </div>
+
+              <div class="result-stat-box">
+                <span class="result-stat-label">10-Yr Compounded (@ 7%)</span>
+                <span class="result-stat-value" id="sim-ten-year" style="color: var(--accent-emerald);">$0</span>
+              </div>
+            </div>
+
+            <p style="font-size: 0.75rem; color: var(--text-tertiary); line-height: 1.4;">
+              💡 <em>Compound interest calculation assumes monthly contributions invested in a diversified market index fund compounding at a conservative historical 7% annual real return.</em>
+            </p>
+          </div>
+
+          <!-- Comprehensive Tips List -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Personalized Spending & Saving Advice</h3>
+                <span class="card-subtitle">Algorithmic analysis of your entered data</span>
+              </div>
+            </div>
+            <div class="tips-list" id="advisor-tips-list">
+              <!-- Injected by advisor.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: Quick Add / Record Transaction -->
+  <div class="modal-overlay" id="transaction-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-tx">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title-tx">Record Transaction</h3>
+        <button class="btn-icon" data-close-modal aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="transaction-form">
+        <div class="modal-body">
+          <!-- Type Segment Selector (Expense vs Income) -->
+          <div class="segment-group">
+            <button type="button" class="segment-btn expense active" id="type-expense-btn">Expense</button>
+            <button type="button" class="segment-btn income" id="type-income-btn">Income</button>
+          </div>
+
+          <!-- Amount Input -->
+          <div class="form-group">
+            <label class="form-label" for="tx-amount">Amount</label>
+            <div class="input-with-symbol">
+              <span class="input-symbol currency-symbol-display">$</span>
+              <input 
+                type="number" 
+                id="tx-amount" 
+                class="form-input" 
+                placeholder="0.00" 
+                step="0.01" 
+                min="0.01" 
+                required 
+              />
+            </div>
+          </div>
+
+          <!-- Category Select -->
+          <div class="form-group">
+            <label class="form-label" for="tx-category">Category</label>
+            <select id="tx-category" class="form-select" required>
+              <optgroup label="Essential Needs (50%)">
+                <option value="Housing">🏠 Housing (Rent/Mortgage)</option>
+                <option value="Groceries">🛒 Groceries</option>
+                <option value="Utilities">⚡ Utilities & Internet</option>
+                <option value="Transportation">🚗 Transportation / Commute</option>
+                <option value="Healthcare">🏥 Healthcare & Meds</option>
+                <option value="Insurance">🛡️ Insurance</option>
+              </optgroup>
+              <optgroup label="Discretionary Wants (30%)">
+                <option value="Dining & Drinks" selected>☕ Dining & Drinks</option>
+                <option value="Entertainment">🎬 Entertainment & Leisure</option>
+                <option value="Shopping">🛍️ Shopping & Gadgets</option>
+                <option value="Subscriptions">🔄 Subscriptions</option>
+                <option value="Travel & Vacation">✈️ Travel & Vacation</option>
+                <option value="Personal Care">✨ Personal Care</option>
+                <option value="Other Expense">📦 Other Expense</option>
+              </optgroup>
+              <optgroup label="Savings & Debt (20%)">
+                <option value="Emergency Fund">🛡️ Emergency Fund</option>
+                <option value="Investments">📈 Stocks / ETFs / Index</option>
+                <option value="Debt Payment">💳 Debt Repayment</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- 50/30/20 Tier Selection Override (For Expenses) -->
+          <div class="form-group" id="tier-form-group">
+            <label class="form-label" for="tx-tier">50/30/20 Tier</label>
+            <select id="tx-tier" class="form-select">
+              <option value="needs">Needs (Essential living costs)</option>
+              <option value="wants" selected>Wants (Discretionary lifestyle)</option>
+              <option value="savings">Savings & Debt (Future net worth)</option>
+            </select>
+          </div>
+
+          <!-- Date & Recurring Row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="tx-date">Date</label>
+              <input type="date" id="tx-date" class="form-input" required />
+            </div>
+
+            <div class="form-group" style="justify-content: flex-end; padding-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" id="tx-recurring" style="accent-color: var(--accent-primary);" />
+                <span>Recurring Monthly</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Notes / Description -->
+          <div class="form-group">
+            <label class="form-label" for="tx-notes">Description / Memo</label>
+            <input 
+              type="text" 
+              id="tx-notes" 
+              class="form-input" 
+              placeholder="e.g. Ramen with friends, Electric bill..." 
+            />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-tx-submit-btn">Save Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Savings Goal -->
+  <div class="modal-overlay" id="goal-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-goal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title-goal">Create Savings Goal</h3>
+        <button class="btn-icon" data-close-modal aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="goal-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="goal-name">Goal Name</label>
+            <input 
+              type="text" 
+              id="goal-name" 
+              class="form-input" 
+              placeholder="e.g. 6-Month Emergency Fund, Dream Vacation..." 
+              required 
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="goal-target">Target Amount</label>
+              <div class="input-with-symbol">
+                <span class="input-symbol currency-symbol-display">$</span>
+                <input 
+                  type="number" 
+                  id="goal-target" 
+                  class="form-input" 
+                  placeholder="5000" 
+                  min="1" 
+                  required 
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="goal-current-input">Currently Saved</label>
+              <div class="input-with-symbol">
+                <span class="input-symbol currency-symbol-display">$</span>
+                <input 
+                  type="number" 
+                  id="goal-current-input" 
+                  class="form-input" 
+                  placeholder="1000" 
+                  min="0" 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="goal-date">Target Date</label>
+              <input type="date" id="goal-date" class="form-input" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="goal-icon">Icon Emoji</label>
+              <select id="goal-icon" class="form-select">
+                <option value="🛡️">🛡️ Safety / Emergency</option>
+                <option value="📈">📈 Investments / Stocks</option>
+                <option value="✈️">✈️ Travel & Vacation</option>
+                <option value="🏠">🏠 House Downpayment</option>
+                <option value="🚗">🚗 New Vehicle</option>
+                <option value="💻">💻 Tech / Gear</option>
+                <option value="🎯">🎯 General Target</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Goal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Keyboard Shortcuts Guide -->
+  <div class="modal-overlay" id="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-shortcuts">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title-shortcuts">Keyboard Shortcuts</h3>
+        <button class="btn-icon" data-close-modal aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="shortcut-row">
+          <span>Quick Record Transaction</span>
+          <kbd class="key">N</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Search / Filter Transactions</span>
+          <kbd class="key">/</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Toggle Dark / Light Theme</span>
+          <kbd class="key">D</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Switch to Overview</span>
+          <kbd class="key">1</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Switch to Ledger</span>
+          <kbd class="key">2</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Switch to Budgets & Goals</span>
+          <kbd class="key">3</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Switch to Tips & Simulator</span>
+          <kbd class="key">4</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span>Close Active Modal</span>
+          <kbd class="key">Esc</kbd>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" data-close-modal>Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notifications Container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- Finance API client and application -->
+  <script src="js/api.js"></script>
+    <script src="js/api.js"></script>
+  <script>
+    (() => {
+      const authScreen = document.getElementById('finance-auth');
+      const financeApp = document.getElementById('finance-app');
+      const form = document.getElementById('auth-form');
+      const emailInput = document.getElementById('auth-email');
+      const passwordInput = document.getElementById('auth-password');
+      const title = document.getElementById('auth-title');
+      const description = document.getElementById('auth-description');
+      const submitButton = document.getElementById('auth-submit');
+      const toggleButton = document.getElementById('auth-toggle');
+      const message = document.getElementById('auth-message');
+
+      let mode = 'login';
+
+      function setMessage(text) {
+        message.textContent = text;
+      }
+
+      function setMode(nextMode) {
+        mode = nextMode;
+        const registering = mode === 'register';
+        title.textContent = registering ? 'Create account' : 'Sign in';
+        description.textContent = registering
+          ? 'Create an account to access your finance dashboard.'
+          : 'Sign in to access your finance dashboard.';
+        submitButton.textContent = registering ? 'Create account' : 'Sign in';
+        toggleButton.textContent = registering
+          ? 'Already have an account? Sign in'
+          : 'Need an account? Create one';
+        passwordInput.autocomplete = registering ? 'new-password' : 'current-password';
+        setMessage('');
+      }
+
+      function addSignOutButton() {
+        const actions = document.querySelector('.header-actions');
+        if (!actions || document.getElementById('sign-out-button')) return;
+
+        const button = document.createElement('button');
+        button.id = 'sign-out-button';
+        button.type = 'button';
+        button.className = 'btn btn-secondary';
+        button.textContent = 'Sign out';
+        button.addEventListener('click', async () => {
+          button.disabled = true;
+          try {
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'same-origin'
+            });
+          } finally {
+            window.location.reload();
+          }
+        });
+        actions.appendChild(button);
+      }
+
+      function showDashboard() {
+        authScreen.hidden = true;
+        financeApp.hidden = false;
+
+        if (document.getElementById('finance-app-script')) {
+          addSignOutButton();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'finance-app-script';
+        script.src = 'js/app.js';
+        script.onload = addSignOutButton;
+        script.onerror = () => {
+          financeApp.hidden = true;
+          authScreen.hidden = false;
+          setMessage('Could not load the finance dashboard.');
+        };
+        document.body.appendChild(script);
+      }
+
+      async function checkSession() {
+        try {
+          const response = await fetch('/api/auth/me', {
+            credentials: 'same-origin'
+          });
+
+          if (response.ok) {
+            showDashboard();
+          } else {
+            authScreen.hidden = false;
+            financeApp.hidden = true;
+          }
+        } catch {
+          authScreen.hidden = false;
+          financeApp.hidden = true;
+          setMessage('Cannot reach the backend. Check that its server is running.');
+        }
+      }
+
+      toggleButton.addEventListener('click', () => {
+        setMode(mode === 'login' ? 'register' : 'login');
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        submitButton.disabled = true;
+        setMessage('');
+
+        try {
+          const response = await fetch(`/api/auth/${mode}`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: emailInput.value.trim(),
+              password: passwordInput.value
+            })
+          });
+
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result.error || result.message || `Request failed (${response.status})`);
+          }
+
+          passwordInput.value = '';
+          showDashboard();
+        } catch (error) {
+          setMessage(error.message || 'Sign-in failed.');
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      checkSession();
+    })();
+  </script>
+</body>
+</html>
+
+
+
